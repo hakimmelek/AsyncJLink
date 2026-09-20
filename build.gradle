@@ -1,0 +1,211 @@
+/*
+ * AsyncJLink — a single multi-module build.
+ *
+ * Dependency direction, enforced by the module wiring below:
+ *
+ *     Commands  <-- Config  <-- Cli
+ *           ^                    Mcp
+ *           |____________________|
+ *
+ * Commands depends on nothing in this project. Config, Cli and Mcp depend on it, never the reverse.
+ * Only Commands sees pfcasync.jar.
+ *
+ * There are no third-party dependencies at all: no repositories block, no network access needed.
+ * Creo sites are frequently air-gapped, so JSON and YAML are implemented in-tree rather than pulled
+ * from Maven Central.
+ */
+
+allprojects {
+    group = 'com.asyncjlink'
+    version = '1.0.0'
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    // Creo 3.0 M120 ships a Java 8 runtime; nothing here uses a later language level, so the output
+    // stays loadable by the JRE that comes with Creo.
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-Xlint:all,-serial,-processing'
+        // On JDK 9+ `--release` is strictly better than source/target: it also checks that only
+        // Java 8 APIs are used, rather than only the language level.
+        if (JavaVersion.current().isJava9Compatible()) {
+            options.release = 8
+        }
+    }
+
+    tasks.withType(Test) {
+        useJUnitPlatform()
+        testLogging {
+            events 'failed'
+            exceptionFormat 'full'
+        }
+    }
+
+    repositories {
+        // Deliberately empty. If tests later need JUnit, drop the jars into <module>/libs and they
+        // will be picked up by the fileTree below rather than fetched over the network.
+    }
+
+    dependencies {
+        testImplementation fileTree(dir: 'libs', include: ['*.jar'])
+    }
+}
+
+/**
+ * Locates PTC's pfcasync.jar.
+ *
+ * It is compileOnly everywhere and never bundled: it belongs to the Creo installation, it is
+ * version-matched to it, and it loads native libraries from the same tree. At runtime
+ * com.asyncjlink.config.Bootstrap adds it to the classpath using the path from paths.yaml.
+ *
+ * Resolution order:
+ *   1. -PpfcasyncJar=<path>
+ *   2. the PFCASYNC_JAR environment variable
+ *   3. pfcasyncJar in gradle.properties
+ *   4. libs/pfcasync.jar in the repository root
+ */
+ext.locatePfcasync = {
+    def candidates = [
+        project.findProperty('pfcasyncJar'),
+        System.getenv('PFCASYNC_JAR'),
+        "${rootDir}/libs/pfcasync.jar"
+    ].findAll { it != null && !it.toString().isEmpty() }
+
+    for (c in candidates) {
+        def f = file(c.toString())
+        if (f.isFile()) {
+            return f
+        }
+    }
+    return null
+}
+
+project(':Commands') {
+    dependencies {
+        def pfcasync = rootProject.ext.locatePfcasync()
+        if (pfcasync != null) {
+            compileOnly files(pfcasync)
+        } else {
+            // Fail at compile time with an explanation rather than with 900 "package does not
+            // exist" errors.
+            tasks.named('compileJava').configure {
+                doFirst {
+                    // GradleException is a default import in build scripts; an editor that lints
+                    // this file without Gradle's classpath will flag it, harmlessly.
+                    throw new GradleException(
+                        "pfcasync.jar not found.\n" +
+                        "Point the build at it with one of:\n" +
+                        "  gradlew build -PpfcasyncJar=\"D:/appli/Creo 3.0/M120/Common Files/text/java/pfcasync.jar\"\n" +
+                        "  set PFCASYNC_JAR=<path>\n" +
+                        "  echo pfcasyncJar=<path> >> gradle.properties\n" +
+                        "  copy the jar to libs/pfcasync.jar")
+                }
+            }
+        }
+    }
+}
+
+project(':Config') {
+    dependencies {
+        implementation project(':Commands')
+    }
+}
+
+project(':Cli') {
+    dependencies {
+        implementation project(':Commands')
+        implementation project(':Config')
+        def pfcasync = rootProject.ext.locatePfcasync()
+        if (pfcasync != null) {
+            // Needed only to resolve types transitively while compiling against Commands; Cli
+            // itself never names a com.ptc type.
+            compileOnly files(pfcasync)
+        }
+    }
+
+    jar {
+        archiveFileName = 'creoctl.jar'
+        manifest {
+            attributes 'Main-Class': 'com.asyncjlink.cli.CreoCtl',
+                       'Implementation-Title': 'AsyncJLink creoctl',
+                       'Implementation-Version': project.version
+        }
+        // A self-contained jar of this project's own classes. pfcasync.jar is added at runtime.
+        from {
+            configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+}
+
+project(':Mcp') {
+    dependencies {
+        implementation project(':Commands')
+        implementation project(':Config')
+        def pfcasync = rootProject.ext.locatePfcasync()
+        if (pfcasync != null) {
+            compileOnly files(pfcasync)
+        }
+    }
+
+    jar {
+        archiveFileName = 'mcp.jar'
+        manifest {
+            attributes 'Main-Class': 'com.asyncjlink.mcp.McpServer',
+                       'Implementation-Title': 'AsyncJLink MCP server',
+                       'Implementation-Version': project.version
+        }
+        from {
+            configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Code generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Regenerates Commands/.../rawcommands from docs/jlink-api-asynchronous.md.
+ *
+ * Not wired into compileJava: the generated tree is checked in, so the project builds on a machine
+ * without Python. Run it by hand after the dictionary changes.
+ */
+tasks.register('generateCommands', Exec) {
+    group = 'build'
+    description = 'Regenerate the raw command layer from the J-Link dictionary.'
+    workingDir = rootDir
+    commandLine pythonExecutable(), 'tools/generate_commands.py'
+}
+
+tasks.register('validateGenerated', Exec) {
+    group = 'verification'
+    description = 'Structurally check the generated Java without needing a JDK.'
+    workingDir = rootDir
+    commandLine pythonExecutable(), 'tools/validate_generated.py'
+}
+
+def pythonExecutable() {
+    def explicit = System.getenv('PYTHON')
+    if (explicit) {
+        return explicit
+    }
+    // Avoid org.gradle.internal.os.OperatingSystem: it is an internal API and moves between versions.
+    return System.getProperty('os.name', '').toLowerCase().contains('windows') ? 'python' : 'python3'
+}
+
+tasks.register('commandCount') {
+    group = 'help'
+    description = 'Print how many commands are generated.'
+    doLast {
+        def index = file('Commands/src/main/java/com/asyncjlink/commands/RawCommandIndex.java')
+        def m = index.text =~ /COUNT = (\d+);/
+        println m ? "${m[0][1]} commands generated." : 'RawCommandIndex.java not generated yet.'
+    }
+}

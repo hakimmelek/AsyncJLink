@@ -1,0 +1,54 @@
+# AsyncJLink — local setup.
+#
+# Copy this file to paths.yaml and fill in the values for this machine. Nothing here is hardcoded in
+# the source; this file is the only place your installation is described.
+#
+# AsyncJLink looks for paths.yaml, in order:
+#   1. -Dasyncjlink.config=<path>
+#   2. the ASYNCJLINK_CONFIG environment variable
+#   3. ./paths.yaml
+#   4. next to the running jar, and in <jar dir>/Config/
+#   5. ~/.asyncjlink/paths.yaml
+#
+# Windows paths must either use forward slashes or double every backslash, because "\a" is an escape
+# inside double quotes. Both of these mean the same thing:
+#     install_dir: "D:\\appli\\Creo 3.0\\M120"
+#     install_dir: "D:/appli/Creo 3.0/M120"
+
+creo:
+  # Root of the Creo Parametric installation.
+  install_dir: "D:\\appli\\Creo 3.0\\M120"
+
+  async:
+    # PRO_COMM_MSG_EXE — the full path to pro_comm_msg.exe. Required.
+    pro_comm_msg_exe: "D:\\appli\\Creo 3.0\\M120\\Common Files\\x86e_win64\\obj\\pro_comm_msg.exe"
+
+    # PTCNMSPORT — must be identical to the port the running Creo was launched with. The async
+    # connection is brokered by PTC's Name Service Message Daemon; this is the only port involved,
+    # and AsyncConnection_Connect itself takes no host or port argument.
+    nms_port: 1239
+
+    # Optional. Defaults to <install_dir>/Common Files/text/java/pfcasync.jar.
+    # pfcasync_jar: "D:\\appli\\Creo 3.0\\M120\\Common Files\\text\\java\\pfcasync.jar"
+
+    # Optional. Directory holding the pfcasyncmt native library. Defaults to the first of
+    # <install_dir>/{x86e_win64,i486_nt,x86_win64}/obj that exists, which does not cover every
+    # installation layout — on Creo 3.0 M120 the library actually lives one level down, under
+    # Common Files/x86e_win64/lib, so the default never finds it and this must be set explicitly.
+    native_lib_dir: "D:\\appli\\Creo 3.0\\M120\\Common Files\\x86e_win64\\lib"
+
+    connect:
+      # "" means the current user; remove the key entirely to match any user.
+      user_name: ""
+      # "" means the local host; remove the key entirely to match any display.
+      display_name: ""
+      # Only needed when the application supplies external message or menu files.
+      message_menu_path: null
+      timeout_seconds: 30
+
+export:
+  # Where relative export paths land. Absolute paths passed to a command are used unchanged.
+  default_output_dir: "C:\\CreoExports"
+
+workspace:
+  default_dir: "C:\\CreoWorkspace"

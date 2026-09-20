@@ -1,0 +1,50 @@
+{
+  "_comment": [
+    "Shared fixture pinning the synthetic parameter-name algorithm.",
+    "",
+    "The algorithm is implemented twice, and the two copies must agree or a schema field name will",
+    "not match the factory argument it is meant to fill:",
+    "  - tools/generate_commands.py  -> param_names(), used to name schema fields at generation time",
+    "  - Commands/.../ParamNames.java -> forTypes(), used at runtime to match JSON keys onto a",
+    "    pfc* factory's arguments",
+    "",
+    "tools/test_generator.py checks the Python side; creoctl --selfcheck checks the Java side.",
+    "Both read this one file -- the Python suite from disk, the Java check as a classpath resource",
+    "-- so neither implementation can drift without the other noticing."
+  ],
+
+  "single": {
+    "String": "value",
+    "int": "value",
+    "Integer": "value",
+    "double": "value",
+    "Double": "value",
+    "boolean": "flag",
+    "Boolean": "flag",
+    "stringseq": "values",
+    "intseq": "values",
+    "realseq": "values",
+    "Model": "model",
+    "Solid": "solid",
+    "ExportInstructions": "exportInstructions",
+    "ComponentPath": "componentPath",
+    "UVParams": "uvParams",
+    "OId": "oId",
+    "ModelType": "modelType",
+    "RegenInstructions": "regenInstructions",
+    "MassProperty": "massProperty"
+  },
+
+  "lists": [
+    { "types": [],                                  "names": [] },
+    { "types": ["String"],                          "names": ["value"] },
+    { "types": ["Solid", "Transform3D"],            "names": ["solid", "transform3D"] },
+    { "types": ["String", "Solid", "boolean"],      "names": ["value", "solid", "flag"] },
+    { "types": ["Model", "Model"],                  "names": ["model1", "model2"] },
+    { "types": ["String", "String", "stringseq"],   "names": ["value1", "value2", "values"] },
+    { "types": ["int", "int", "Model"],             "names": ["value1", "value2", "model"] },
+    { "types": ["Model", "String", "Model"],        "names": ["model1", "value", "model2"] },
+    { "types": ["String", "int"],                   "names": ["value1", "value2"] },
+    { "types": ["boolean", "Boolean"],              "names": ["flag1", "flag2"] }
+  ]
+}

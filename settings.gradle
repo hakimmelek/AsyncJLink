@@ -1,0 +1,8 @@
+rootProject.name = 'AsyncJLink'
+
+// The module names match the folders in the architecture: Commands is the base, the other three
+// depend on it and never the reverse.
+include 'Commands'
+include 'Config'
+include 'Cli'
+include 'Mcp'

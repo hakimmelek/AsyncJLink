@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Copy the 'creo-jlink' entry below into your AI client's own mcp.json.",
+    "",
+    "There is nothing about Creo, hosts or ports here on purpose: discovery is just a command and",
+    "its arguments. Everything installation-specific lives in paths.yaml, which the server finds on",
+    "its own (see Config/paths.example.yaml for the search order).",
+    "",
+    "The server bootstraps itself: on startup it reads paths.yaml and, if PTCNMSPORT and",
+    "PRO_COMM_MSG_EXE are not already set, re-executes once with the correct environment and with",
+    "pfcasync.jar on the classpath. That is why 'java -jar mcp.jar' alone is enough.",
+    "",
+    "If paths.yaml is not in one of the default locations, add it explicitly:",
+    "  \"args\": [\"-Dasyncjlink.config=C:\\\\Tools\\\\AsyncJLink\\\\paths.yaml\", \"-jar\", \"C:\\\\Tools\\\\AsyncJLink\\\\mcp.jar\"]",
+    "",
+    "This server publishes every J-Link operation as its own tool. If your client struggles with a",
+    "tool list that size, cap the page size and it will paginate:",
+    "  \"args\": [\"-Dasyncjlink.mcp.pageSize=100\", \"-jar\", \"C:\\\\Tools\\\\AsyncJLink\\\\mcp.jar\"]"
+  ],
+
+  "mcpServers": {
+    "creo-jlink": {
+      "command": "java",
+      "args": ["-jar", "C:\\Tools\\AsyncJLink\\mcp.jar"]
+    }
+  }
+}

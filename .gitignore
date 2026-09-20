@@ -1,0 +1,36 @@
+# The user's own machine-specific setup. Only paths.example.yaml is tracked.
+paths.yaml
+Config/paths.yaml
+
+# Project-scoped MCP config: points at this machine's absolute build/paths.yaml locations.
+.mcp.json
+
+# PTC's jar is never vendored: it belongs to the Creo installation and is version-matched to it.
+libs/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Build output
+build/
+out/
+bin/
+.gradle/
+gradle.properties
+
+# Assembled by build-release.bat. The inputs are tracked (packaging/, Config/, Cli/); the
+# assembled folder is not, and it holds the user's filled-in paths.yaml.
+release/
+
+# Editors
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.claude/
+
+# Python (tools/)
+__pycache__/
+*.pyc
+.venv/
